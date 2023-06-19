@@ -329,12 +329,129 @@ inputElement.addEventListener("click", e => {
         console.log(RADIAN)
     } else if (button.type == "calculate") {
         let formulaStr = data.formula.join("");
-        let result = eval(formulaStr);
-        updateOutputResult(result);
+        let powerSearchResult = search(data.formula, POWER);
+        let factorialSearchResult = search(data.formula, FACTORIAL);
+
+        // GET POWER BASE AND REPLACE WITH CORRECT SYMBOLS
+        const BASES = powerBaseGetter(data.formula, powerSearchResult);
+        BASES.forEach(base => {
+            let toReplace = base + POWER;
+            let replacement = "Math.pow(" + base + ",";
+
+            formulaStr = formulaStr.replace(toReplace, replacement);
+        })
+        console.log(BASES)
+
+        // GET POWER BASE AND REPLACE WITH CORRECT SYMBOLS
+        const NUMBERS = factorialNumberGetter(data.formula, factorialSearchResult);
+        NUMBERS.forEach(number => {
+            formulaStr = formulaStr.replace(factorial.toReplace, factorial.replacement);
+        })
+        
+        try {
+            console.log(formulaStr)
+            let result = eval(formulaStr);
+            updateOutputResult(result);
+            // SAVE RESULT FOR LATER USE
+            data.operation = [result];
+            data.formula = [result];
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                let result = "Syntax Error!"
+                updateOutputResult(result);
+                return
+            }
+        }         
     }
 
     updateOutputOperation(data.operation.join(""))
  }
+
+ // SEARCH AN ARRAY
+const search = function (array, keyword) {
+    let searchResult = [];
+    array.forEach((element, index) => {
+        if (element == keyword) searchResult.push(index);
+    })
+    return searchResult
+}   
+
+// GET POWER BASES
+ const powerBaseGetter = function (formula, powerIndexes) {
+    let powerBases = [];
+    powerIndexes.forEach(powerIndex => {
+        let base = [];
+        let parenthesesCount = 0;
+        let previousIndex = powerIndex - 1;
+
+        while (previousIndex >= 0) {
+            if (formula[previousIndex] == "(") parenthesesCount--;
+            if (formula[previousIndex] == ")") parenthesesCount++;
+
+            let isOperator = false;
+            OPERATORS.forEach(OPERATOR => {
+                if (formula[previousIndex] == OPERATOR) isOperator = true;
+            })
+            
+            let isPower = formula[previousIndex] == POWER;
+            if ((isOperator && parenthesesCount == 0) || isPower) break;
+            base.unshift(formula[previousIndex]);
+            previousIndex--;
+        }
+        powerBases.push(base.join(""));
+    })
+    return powerBases
+}   
+
+// GET FACTORIAL NUMBERS
+const factorialNumberGetter = function (formula, factorialSearchResult) {
+    let numbers = [];
+    let factorialSequence = 0;
+
+    factorialSearchResult.forEach(factorialIndex => {
+        let number = [];
+        let nextIndex = factorialIndex + 1;
+        let nextInput = formula[nextIndex];
+
+        if (nextIndex == FACTORIAL) {
+            factorialSequence += 1;
+            return
+        }
+
+        // GET INDEX OF FIRST FACTORIAL FUNCTION IF EXISTS!
+        let firstFactorialIndex = factorialIndex - factorialSequence;
+        let previousIndex = firstFactorialIndex - 1;
+        let parenthesesCount = 0;
+
+        while (previousIndex >= 0) {
+            if (formula[previousIndex] == "(") parenthesesCount--;
+            if (formula[previousIndex] == ")") parenthesesCount++;
+
+            let isOperator = false;
+            OPERATORS.forEach(OPERATOR => {
+                if (formula[previousIndex] == OPERATOR) isOperator = true;
+            })
+            
+            if ((isOperator && parenthesesCount == 0)) break;
+            number.unshift(formula[previousIndex]);
+            previousIndex--;
+        }
+        let numberStr = number.join("");
+        let times = factorialSequence + 1;
+        
+        let toReplace = numberStr + FACTORIAL.repeat(times);
+        let replacement = FACTORIAL.toLowerCase().repeat(times) + numberStr + ")".repeat(times)
+        
+        numbers.push({
+            toReplace: toReplace,
+            replacement: replacement
+        })
+
+        factorialSequence = 0;
+    })
+
+    return numbers
+}   
 
  // UPDATE OUTPUT
  const updateOutputOperation = function(operation) {
@@ -344,6 +461,15 @@ inputElement.addEventListener("click", e => {
     outputResultElement.innerHTML = result;
  }
  
+ // FACTORIAL FUNCTION
+ const factorial = function (number) {
+    if (number % 1 != 0) return gamma(number + 1);
+    if (number === 0 || number === 1) return 1;
+    let result = number * factorial(number-1);
+    if (result === Infinity) return Infinity;
+    return result
+ }
+
 // GAMMA FUNCTINON
 function gamma(n) {  // accurate to about 15 decimal places
     //some magic constants 
